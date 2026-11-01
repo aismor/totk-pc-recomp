@@ -233,12 +233,15 @@ class FormTest(unittest.TestCase):
 
 
 class CatalogTest(unittest.TestCase):
-    def test_russian_covers_english_with_the_same_placeholders(self):
-        en, ru = Catalog('en').english, Catalog('ru').texts
-        self.assertEqual(sorted(set(en) - set(ru)), [])
-        self.assertEqual(sorted(set(ru) - set(en)), [])
-        holes = [k for k in en if sorted(re.findall(r'\{\w+\}', en[k])) != sorted(re.findall(r'\{\w+\}', ru[k]))]
-        self.assertEqual(holes, [])
+    def test_translations_cover_english_with_the_same_placeholders(self):
+        en = Catalog('en').english
+        for lang in ('pt', 'ru'):
+            translated = Catalog(lang).texts
+            self.assertEqual(sorted(set(en) - set(translated)), [])
+            self.assertEqual(sorted(set(translated) - set(en)), [])
+            holes = [k for k in en if sorted(re.findall(r'\{\w+\}', en[k])) !=
+                     sorted(re.findall(r'\{\w+\}', translated[k]))]
+            self.assertEqual(holes, [], lang)
 
     def test_every_id_the_window_uses_exists(self):
         cat = Catalog('en')
@@ -246,12 +249,12 @@ class CatalogTest(unittest.TestCase):
                                    'process_died', 'result_ok', 'result_failed', 'result_cancelled')]
         ids += [f'step.{s}' for s in ('check', 'extract', 'lift', 'compile', 'prepare', 'cleanup')]
         ids += ['ui.state_' + n for n in ('started', 'done', 'skipped', 'pending', 'running', 'failed')]
-        for lang in ('en', 'ru'):
+        for lang in ('en', 'pt', 'ru'):
             cat.set_language(lang)
             self.assertEqual([i for i in ids if not cat.has(i)], [])
 
     def test_codes_become_names(self):
-        for lang, korean in (('en', 'Korean'), ('ru', 'Корейский')):
+        for lang, korean in (('en', 'Korean'), ('pt', 'Coreano'), ('ru', 'Корейский')):
             cat = Catalog(lang)
             self.assertIn(korean, cat('warn.lang_needs_fonts', lang='ko'))
             self.assertNotIn(' ko ', cat('warn.lang_needs_fonts', lang='ko'))
@@ -280,7 +283,7 @@ class CatalogTest(unittest.TestCase):
         self.assertEqual(describe_event(cat, {'type': 'start'}), '')
 
     def test_windows_language_is_a_known_value(self):
-        self.assertIn(windows_ui_language(), ('en', 'ru'))
+        self.assertIn(windows_ui_language(), ('en', 'pt', 'ru'))
 
 
 BREAK_CHILD = 'import time\nprint("ready", flush=True)\ntime.sleep(60)\n'

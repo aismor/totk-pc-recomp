@@ -55,7 +55,7 @@ class Layout:
     llvm: Path            # llvm-mingw tree; on Linux the tree with bin/clang (a release's, or the system's /usr)
     deps: Path | None     # include/ and lib/ for the link; None: the system's (Linux dev mode)
     runtime: Path         # runtime headers and install-side sources
-    runtime_lib: Path     # libtotkrt.a
+    runtime_lib: Path | None  # libtotkrt.a; None builds the runtime with a development install
     ninja: Path
     hactool: Path
     xlate: Path           # totk_xlate.exe; a totk_xlate.id beside it is copied too
@@ -83,7 +83,8 @@ class Layout:
                 self.tools / 'pack_shader_cache.py', self.tools / 'make_romfs_patches.py', self.tools / 'ultrawide_layout.py',
                 self.recomp / 'gen.py',
                 self.clang,
-                *((self.deps / 'include', self.deps / 'lib') if self.deps else ()), self.runtime, self.runtime_lib, self.ninja, self.hactool,
+                *((self.deps / 'include', self.deps / 'lib') if self.deps else ()), self.runtime,
+                *((self.runtime_lib,) if self.runtime_lib else ()), self.ninja, self.hactool,
                 self.xlate, *self.dlls, *(f(v) for v in SUPPORTED for f in (self.patches, self.expected))]
         if self.shader_list:
             need.append(self.shader_list)
@@ -152,7 +153,7 @@ def dev_layout_posix(root):
         root=root, dev=True, release=f'{semver}-dev+{dev_commit(root) or "unknown"}',
         python=Path(sys.executable), tools=root / 'tools', recomp=root / 'recomp',
         llvm=Path(clang).parent.parent if clang else root / 'toolchain' / 'clang-missing', deps=None,
-        runtime=root / 'runtime', runtime_lib=root / 'build' / 'install-rtlib' / 'libtotkrt.a',
+        runtime=root / 'runtime', runtime_lib=None,
         ninja=Path(ninja) if ninja else root / 'toolchain' / 'ninja-missing',
         hactool=root / 'toolchain' / 'hactool' / 'hactool', xlate=root / 'build' / 'xlate' / 'totk_xlate',
         shader_list=None, ini_example=root / 'totk.ini.example', temp=root / 'build' / 'install-temp')

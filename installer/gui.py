@@ -2,10 +2,10 @@
 
 A front end over the CLI (docs/installer.md): it collects the game files, the keys file path, the game language and the
 install folder, runs `python -m installer ...` as a subprocess and shows its JSON events. Decisions live in guilogic.py;
-this file only draws. The window text is in installer/text/<en|ru>.json under "ui.*" and "launcher.*" ids.
+this file only draws. The window text is in installer/text/<en|pt|ru>.json under "ui.*" and "launcher.*" ids.
 
-    --selftest [--shots DIR]   build every screen in both languages and close by itself (PNG per screen with --shots)
-    --lang en|ru               window language (default: the Windows display language)
+    --selftest [--shots DIR]   build every screen in every language and close by itself (PNG per screen with --shots)
+    --lang en|pt|ru            window language (default: the system display language)
 """
 import argparse
 import json
@@ -484,12 +484,18 @@ class App:
 
     def open_folder(self):
         dest = self.model.dest
-        if dest and Path(dest).is_dir():
-            if os.name == 'nt':
-                os.startfile(dest)
-            else:
-                subprocess.Popen(['xdg-open', dest], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 start_new_session=True)
+        if not dest or not Path(dest).is_dir():
+            return
+        if os.name == 'nt':
+            os.startfile(dest)
+            return
+        fifo = os.environ.get('KINGDOM_OPEN_FIFO')
+        if fifo and Path(fifo).exists():
+            with open(fifo, 'w', encoding='utf-8') as f:
+                f.write(f'{dest}\n')
+        elif shutil.which('xdg-open'):
+            subprocess.Popen(['xdg-open', dest], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
 
 
 # ---- self test ---------------------------------------------------------------------------------------------------

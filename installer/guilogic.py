@@ -24,11 +24,12 @@ from . import state as statefile
 from .events import render
 
 TEXT = Path(__file__).resolve().parent / 'text'
-UI_LANGUAGES = ('en', 'ru')
+UI_LANGUAGES = ('en', 'pt', 'ru')
 STEP_ORDER = ('check', 'extract', 'lift', 'compile', 'prepare', 'cleanup')
 # message parameter -> catalog id prefix of the names that replace its raw values
 PARAM_NAMES = {'lang': 'lang.', 'known': 'lang.', 'step': 'step.', 'input': 'param.input.'}
-LANG_RU = 0x19   # primary language id of Russian in a Windows LANGID
+LANG_PT = 0x16   # primary language ids in a Windows LANGID
+LANG_RU = 0x19
 
 
 def load_texts(lang):
@@ -76,19 +77,21 @@ def flat(value):
 
 
 def windows_ui_language():
-    """'ru' when the display language (Windows; elsewhere LC_ALL, LC_MESSAGES or LANG) is Russian, else 'en'."""
+    """Installer language from the Windows display language or, elsewhere, the process locale."""
     if os.name != 'nt':
         loc = os.environ.get('LC_ALL') or os.environ.get('LC_MESSAGES') or os.environ.get('LANG') or ''
-        return 'ru' if loc.lower().startswith('ru') else 'en'
+        primary = loc.lower().split('_', 1)[0].split('-', 1)[0]
+        return primary if primary in ('pt', 'ru') else 'en'
     try:
         langid = ctypes.windll.kernel32.GetUserDefaultUILanguage()
     except (AttributeError, OSError):
         return 'en'
-    return 'ru' if langid & 0x3ff == LANG_RU else 'en'
+    primary = langid & 0x3ff
+    return 'pt' if primary == LANG_PT else 'ru' if primary == LANG_RU else 'en'
 
 
 def default_game_language(ui):
-    return 'ru' if ui == 'ru' else 'en-US'
+    return {'pt': 'pt-BR', 'ru': 'ru'}.get(ui, 'en-US')
 
 
 def gib(n):
@@ -134,10 +137,12 @@ class Form:
         if not self.dest.strip():
             found.append('ui.need_dest')
         if not update:
+            combined = self.base.strip().lower().endswith('.xci')
             for name in ('base', 'update', 'keys'):
                 value = getattr(self, name).strip()
                 if not value:
-                    found.append(f'ui.need_{name}')
+                    if not (name == 'update' and combined):
+                        found.append(f'ui.need_{name}')
                 elif not Path(value).is_file():
                     found.append(f'ui.missing_{name}')
             if self.lang not in ini.LANGUAGES:
